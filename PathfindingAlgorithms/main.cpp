@@ -21,15 +21,15 @@ private:
 	int cols;
 	int rows;
 	int selectedMenuId;
-	int lastI = 0;
-	int lastJ = 0;
+	float time = 0;
 	std::string menuItems[3] = {"Dijkstra's algorithm", "A* algorithm", "Deneme"};
 	bool isRunning = false;
+	bool isFinished = false;
 	float k = 0;
 public:
 
 	bool OnUserCreate() {
-		cellSize = 20;
+		cellSize = 40;
 		offSet = 30;
 		selectedMenuId = 0;
 		sAppName = "Pathfinding Algorithms";
@@ -52,8 +52,7 @@ public:
 	}
 	
 	bool OnUserUpdate(float fElapsedTime) {
-		if(!isRunning)
-			Clear(olc::BLACK);
+		Clear(olc::BLACK);
 		Render(fElapsedTime);
 		TakeInput(fElapsedTime);
 		Calculate(fElapsedTime);
@@ -73,7 +72,7 @@ public:
 		FillTriangle(5, 13, 8, 5, 11, 13);
 		FillTriangle(5, 17, 8, 25, 11, 17);
 		DrawString(15,7, menuItems[selectedMenuId],isRunning ? olc::RED : olc::WHITE, 2);
-		DrawString(ScreenWidth() - 300,7, "Time elapsed: 25s", olc::WHITE, 2);
+		DrawString(ScreenWidth() - 400,7, "Time elapsed: " + std::to_string(time), olc::WHITE, 2);
 	}
 
 	void RenderMaze() {
@@ -122,7 +121,7 @@ public:
 			int mouseY = GetMouseY() - offSet;
 			int proceededX = mouseX / cellSize;
 			int proceededY = mouseY / cellSize;
-			std::cout << "X:" << proceededX << " Y:" << proceededY << std::endl;
+			//std::cout << "X:" << proceededX << " Y:" << proceededY << std::endl;
 			Cell* selected = &cells[(int)ceil(proceededX)][(int)ceil(proceededY)];
 			if (GetMouse(0).bHeld) {
 				if (GetKey(olc::Key::S).bHeld) {
@@ -133,6 +132,7 @@ public:
 					// set type to end(2)
 					selected->type = 2;
 					end = selected;
+					current = end;
 				}
 				else {
 					// set type to wall(5)
@@ -172,10 +172,11 @@ public:
 
 	void Calculate(float fElapsedTime) {
 		if (isRunning) {
+			isFinished = false;
 			switch (selectedMenuId)
 			{
 			case 0:	// Dijkstra
-				DijkstraAlgorithm(fElapsedTime);
+				DijkstraAlgorithm();
 				break;
 			case 1:
 				AStarAlgorithm();
@@ -185,26 +186,36 @@ public:
 			default:
 				break;
 			}
+			k += fElapsedTime;
+			time = k;
+		}
+		else {
+			if (isFinished) {
+				for (size_t i = 0; i < cols; i++)
+				{
+					for (size_t j = 0; j < rows; j++)
+					{
+						if (cells[i][j].type == 4)	cells[i][j].type = 3;
+					}
+				}
+				k = 0;
+			}
 		}
 	}
 
-	void DijkstraAlgorithm(float fElapsedTime) {
-
-		//for (size_t i = 0; i < cols; i++)
-		//{
-		//	for (size_t j = 0; j < rows; j++)
-		//	{
-		//		DrawString(i*cellSize + 5, j*cellSize + 7,std::to_string(cells[i][j].d_cost),olc::WHITE,2);
-		//		DrawRect(i * cellSize, offSet + j * cellSize, cellSize, cellSize, olc::BLACK);
-		//	}
-		//}
+	void DijkstraAlgorithm() {
 
 		// type=0 not visited, type=3 already visited, type=4 currently visiting
 		if (!isEveryCellVisited()) {
 			Cell* selected = minDistCell();
-			selected->type = 3;
-			updateAdjCosts(selected);
-			current = end;
+			if (selected == nullptr) {
+				std::cout << "No Solution" << std::endl;
+				isRunning = false;
+			}
+			else {
+				updateAdjCosts(selected);
+				selected->type = 3;
+			}
 		}
 		else 
 		{
@@ -214,6 +225,7 @@ public:
 			}
 			else {
 				isRunning = false;
+				isFinished = true;
 			}
 		}
 
@@ -236,9 +248,8 @@ public:
 				cells[i][j] = Cell{ (int)i,(int)j,0 };
 			}
 		}
-		lastI = 0;
-		lastJ = 0;
 		isRunning = false;
+		isFinished = true;
 	}
 
 	void updateAdjCosts(Cell* selected) {
@@ -259,40 +270,45 @@ public:
 
 		if (leftC != nullptr)
 			if (leftC->d_cost > tempCost) {
-				leftC->d_cost = tempCost;
-				leftC->type = 4;
-				leftC->d_prev = selected;
+				if (leftC->type != 5) {
+					leftC->d_cost = tempCost;
+					leftC->type = 4;
+					leftC->d_prev = selected;
+				}
 			}
 		if (rightC != nullptr)
 			if (rightC->d_cost > tempCost) {
-				rightC->d_cost = tempCost;
-				rightC->type = 4;
-				rightC->d_prev = selected;
+				if (rightC->type != 5) {
+					rightC->d_cost = tempCost;
+					rightC->type = 4;
+					rightC->d_prev = selected;
+				}
 			}
 		if (upC != nullptr)
 			if (upC->d_cost > tempCost) {
-				upC->d_cost = tempCost;
-				upC->type = 4;
-				upC->d_prev = selected;
+				if (upC->type != 5) {
+					upC->d_cost = tempCost;
+					upC->type = 4;
+					upC->d_prev = selected;
+				}
 			}
 		if (downC != nullptr)
 			if (downC->d_cost > tempCost) {
-				downC->d_cost = tempCost;
-				downC->type = 4;
-				downC->d_prev = selected;
+				if (downC->type != 5) {
+					downC->d_cost = tempCost;
+					downC->type = 4;
+					downC->d_prev = selected;
+				}
 			}
 	}
 
 	bool isEveryCellVisited() {
-		for (size_t i = lastI; i < cols; i++)
+		for (size_t i = 0; i < cols; i++)
 		{
-			for (size_t j = lastJ; j < rows; j++)
+			for (size_t j = 0; j < rows; j++)
 			{
-				if (cells[i][j].type == 0) {
-					lastI = i;
-					lastJ = j;
+				if (cells[i][j].type == 0) 
 					return false;
-				}
 			}
 		}
 		return true;

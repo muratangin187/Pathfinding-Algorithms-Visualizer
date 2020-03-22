@@ -8,6 +8,10 @@ struct Cell
 	int type;
 	unsigned int d_cost = INFINITE;
 	Cell* d_prev = nullptr;
+	//A*
+	unsigned int f = INFINITE;
+	unsigned int g = INFINITE;
+	unsigned int h;
 };
 
 class PF : public::olc::PixelGameEngine {
@@ -26,6 +30,7 @@ private:
 	bool isRunning = false;
 	bool isFinished = false;
 	float k = 0;
+	std::vector<Cell*> openSet;
 public:
 
 	bool OnUserCreate() {
@@ -156,7 +161,11 @@ public:
 			}
 			if (GetKey(olc::Key::ENTER).bPressed) {
 				isRunning = true;
+				isFinished = false;
 				start->d_cost = 0;
+				start->g = 0;
+				start->f = calculateH(start);
+				openSet.push_back(start);
 			}
 			if (GetKey(olc::Key::ESCAPE).bPressed) {
 				resetCells();
@@ -172,7 +181,6 @@ public:
 
 	void Calculate(float fElapsedTime) {
 		if (isRunning) {
-			isFinished = false;
 			switch (selectedMenuId)
 			{
 			case 0:	// Dijkstra
@@ -186,6 +194,7 @@ public:
 			default:
 				break;
 			}
+			//isFinished = false;
 			k += fElapsedTime;
 			time = k;
 		}
@@ -224,9 +233,12 @@ public:
 				current = current->d_prev;
 			}
 			else {
+				current->type = 6;
 				isRunning = false;
 				isFinished = true;
 			}
+			start->type = 1;
+			end->type = 2;
 		}
 
 
@@ -239,7 +251,7 @@ public:
 		}
 		delete[] cells;
 		cells = new Cell * [cols];
-
+		openSet.clear();
 		for (size_t i = 0; i < cols; i++)
 		{
 			cells[i] = new Cell[rows];
@@ -333,8 +345,142 @@ public:
 	}
 
 	void AStarAlgorithm() {
-	
+		if (isFinished) {
+			if (current->d_prev != start) {
+				if(current != end)
+					current->type = 6;
+				current = current->d_prev;
+			}
+			else {
+				current->type = 6;
+				isFinished = true;
+				isRunning = false;
+			}
+			end->type = 2;
+		}
+		else {
+			if (openSet.size() != 0) {
+				int currentIndex = lowestF();
+				current = openSet.at(currentIndex);
+				if (current == end) {
+					isFinished = true;
+				}
+				else {
+					openSet.erase(openSet.begin() + currentIndex);
+					updateAdjAStar(current);
+				}
+			}
+		}
+		
 	}
+	void updateAdjAStar(Cell* selected) {
+		Cell* leftC = nullptr;
+		Cell* rightC = nullptr;
+		Cell* upC = nullptr;
+		Cell* downC = nullptr;
+		if (selected->i > 0)
+			leftC = &cells[selected->i - 1][selected->j];
+		if (selected->i < cols - 1)
+			rightC = &cells[selected->i + 1][selected->j];
+		if (selected->j > 0)
+			upC = &cells[selected->i][selected->j - 1];
+		if (selected->j < rows - 1)
+			downC = &cells[selected->i][selected->j + 1];
+
+		unsigned int gCost = selected->g + 1;
+
+		if (leftC != nullptr)
+			if (leftC->g > gCost) {
+				if (leftC->type != 5) {
+					leftC->g = gCost;
+					leftC->type = 4;
+					leftC->h = calculateH(leftC);
+					leftC->f = leftC->g + leftC->h;
+					leftC->d_prev = selected;
+					if (std::find(openSet.begin(), openSet.end(), leftC) != openSet.end()) {
+						//found
+
+					}
+					else {
+						//not found
+						openSet.push_back(leftC);
+					}
+
+				}
+			}
+		if (rightC != nullptr)
+			if (rightC->g > gCost) {
+				if (rightC->type != 5) {
+					rightC->g = gCost;
+					rightC->type = 4;
+					rightC->h = calculateH(rightC);
+					rightC->f = rightC->g + rightC->h;
+					rightC->d_prev = selected;
+					if (std::find(openSet.begin(), openSet.end(), rightC) != openSet.end()) {
+						//found
+
+					}
+					else {
+						//not found
+						openSet.push_back(rightC);
+					}
+				}
+			}
+		if (upC != nullptr)
+			if (upC->g > gCost) {
+				if (upC->type != 5) {
+					upC->g = gCost;
+					upC->type = 4;
+					upC->h = calculateH(upC);
+					upC->f = upC->g + upC->h;
+					upC->d_prev = selected;
+					if (std::find(openSet.begin(), openSet.end(), upC) != openSet.end()) {
+						//found
+
+					}
+					else {
+						//not found
+						openSet.push_back(upC);
+					}
+				}
+			}
+		if (downC != nullptr)
+			if (downC->g > gCost) {
+				if (downC->type != 5) {
+					downC->g = gCost;
+					downC->type = 4;
+					downC->h = calculateH(downC);
+					downC->f = downC->g + downC->h;
+					downC->d_prev = selected;
+					if (std::find(openSet.begin(), openSet.end(), downC) != openSet.end()) {
+						//found
+
+					}
+					else {
+						//not found
+						openSet.push_back(downC);
+					}
+				}
+			}
+	}
+
+
+	int lowestF() {
+		int min = 0;
+		for (size_t i = 0; i < openSet.size(); i++)
+		{
+			if (openSet.at(min)->f > openSet.at(i)->f) {
+				min = i;
+			}
+		}
+		return min;
+	}
+
+	unsigned int calculateH(Cell* cell) {
+		return abs(cell->i - end->i) + abs(cell->j - end->j);
+	}
+
+
 
 };
 
